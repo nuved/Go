@@ -159,7 +159,7 @@ func (hm *HashMap) Print() {
 			}
 
 			// 5. Mark the end of the chain
-			fmt.Println("nil")
+			fmt.Println("")
 		}
 	}
 	fmt.Println("-----------------------------")

@@ -115,17 +115,23 @@ Without the **Mixer** logic, the HashMap would suffer from **Ineffective Bucket 
 
 ---
 
-## 6. Performance (Big O Complexity)
+### 🛠️ Technical Design Choice: The Bitwise "Mixer"
 
-| Operation | Average Case | Worst Case (Clustered) |
-| :--- | :--- | :--- |
-| **Insert (`Put`)** | **O(1)** Instant | **O(n)** Slow |
-| **Search (`Get`)** | **O(1)** Instant | **O(n)** Slow |
+When looking at the internal `hash()` function, you will notice this specific return statement:
 
-### The Savior (`resize()`)
-If the map gets more than 75% full, `hm.resize()` doubles the boxes to 2048 and **Rehashes** every item. Because the "Cookie Cutter" mask is now larger, everyone moves to new boxes. This is why HashMaps are **Unordered**!
+`return (hm.capacity - 1) & (hashValue ^ (hashValue >> 16))`
 
----
+**Wait, can we just remove the `^ (hashValue >> 16)`?**
+Technically, yes. Because we are using the **FNV-1a** algorithm, the bottom bits of the resulting 64-bit hash *should* already be sufficiently scrambled and random. 
+
+However, we intentionally keep the shift and XOR operations as **Insurance against Clustering**. 
+
+Here is why this is a standard defensive programming practice (popularized by implementations like the Java 8 HashMap):
+
+* **Defensive Entropy Mixing:** An array index only looks at the very lowest bits of a hash (e.g., the last 10 bits for a capacity of 1024). If your keys have patterns that cause the *low* bits to be identical but the *high* bits to be unique (common with sequential IDs or memory pointers), removing this step would cause massive collisions. 
+* **The "Fold":** Shifting right by 16 (`>> 16`) takes the unique information from the top half of the hash and folds it down. 
+* **The "Blend":** The XOR (`^`) operator then blends that high-bit data into the low-bit data safely, without losing information.
+* **Zero Performance Cost:** The CPU cost of one XOR and one Bitwise Shift is essentially zero (1-2 CPU cycles). It is a highly efficient, cheap insurance policy to guarantee $O(1)$ performance, even with poorly distributed input data.
 
 ## 7. Test it Yourself (The Local Sandbox)
 
